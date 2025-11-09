@@ -42,7 +42,7 @@ supabase = init_supabase()
 # ============================================
 
 @st.cache_data(ttl=0.5)  # Cache for 0.5 seconds (CHANGED)
-def fetch_latest_data(limit=100):
+def fetch_latest_data(limit=30):
     """Fetch latest sensor data from Supabase"""
     if supabase is None:
         return pd.DataFrame()
@@ -133,7 +133,7 @@ with st.sidebar:
     # Time range selector
     time_range = st.selectbox(
         "Time Range",
-        ["Last 100 readings", "Last 1 hour", "Last 6 hours", "Last 24 hours"],
+        ["Last 30 readings", "Last 1 hour", "Last 6 hours", "Last 24 hours"],
         index=0
     )
     
@@ -507,4 +507,5 @@ with stat_col3:
 
 if auto_refresh:
     time.sleep(0.5)
+
     st.rerun()
