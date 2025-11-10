@@ -41,7 +41,7 @@ supabase = init_supabase()
 # DATA FETCHING FUNCTIONS
 # ============================================
 
-@st.cache_data(ttl=0.5)  # Cache for 0.5 seconds (CHANGED)
+#st.cache_data(ttl=0.5)  # Cache for 0.5 seconds (CHANGED)
 def fetch_latest_data(limit=25):
     """Fetch latest sensor data from Supabase"""
     if supabase is None:
@@ -509,6 +509,7 @@ if auto_refresh:
     time.sleep(0.5)
 
     st.rerun()
+
 
 
 
