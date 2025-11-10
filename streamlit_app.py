@@ -1,3 +1,7 @@
+
+
+
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -41,9 +45,9 @@ supabase = init_supabase()
 # DATA FETCHING FUNCTIONS
 # ============================================
 
-st.cache_data(ttl=0)  # Cache for 0.5 seconds (CHANGED)
+# NO CACHING for real-time data - FIXED
 def fetch_latest_data(limit=25):
-    """Fetch latest sensor data from Supabase"""
+    """Fetch latest sensor data from Supabase - NO CACHING for real-time updates"""
     if supabase is None:
         return pd.DataFrame()
     
@@ -64,6 +68,7 @@ def fetch_latest_data(limit=25):
         st.error(f"Error fetching data: {e}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=5)  # Cache for 5 seconds for time-based queries
 def fetch_data_by_timerange(hours=1):
     """Fetch data for specific time range"""
     if supabase is None:
@@ -87,6 +92,7 @@ def fetch_data_by_timerange(hours=1):
         st.error(f"Error fetching data: {e}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=30)
 def get_total_records():
     """Get total number of records"""
     if supabase is None:
@@ -101,7 +107,7 @@ def get_total_records():
         return 0
 
 # ============================================
-# HELPER FUNCTIONS (NEW)
+# HELPER FUNCTIONS
 # ============================================
 
 def normalize_angle(angle):
@@ -130,14 +136,14 @@ st.markdown("### Real-time Sensor Monitoring & Analytics")
 with st.sidebar:
     st.header("⚙️ Settings")
     
-    # Time range selector
+    # Time range selector - FIXED
     time_range = st.selectbox(
         "Time Range",
         ["Last 25 readings", "Last 1 hour", "Last 6 hours", "Last 24 hours"],
         index=0
     )
     
-    # Auto-refresh toggle (CHANGED to 0.5s)
+    # Auto-refresh toggle
     auto_refresh = st.checkbox("Auto-refresh (0.5s)", value=True)
     
     # Refresh button
@@ -154,7 +160,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Warning thresholds (NEW)
+    # Warning thresholds
     st.subheader("⚠️ Warning Settings")
     st.info("**Tilt Warning Threshold**\n\nRoll: ±45°\nPitch: ±45°")
     
@@ -168,8 +174,8 @@ with st.sidebar:
 # FETCH DATA BASED ON SELECTION
 # ============================================
 
-if time_range == "Last 100 readings":
-    df = fetch_latest_data(100)
+if time_range == "Last 25 readings":  # FIXED
+    df = fetch_latest_data(25)
 elif time_range == "Last 1 hour":
     df = fetch_data_by_timerange(1)
 elif time_range == "Last 6 hours":
@@ -186,7 +192,7 @@ if df.empty:
     st.info("💡 **Troubleshooting:**\n- Check ESP32 is powered on\n- Verify WiFi connection\n- Check Serial Monitor for errors\n- Verify Supabase credentials")
     st.stop()
 
-# Apply angle normalization to gyroscope data (CHANGED: -180 to 180)
+# Apply angle normalization to gyroscope data
 df['gyro_x_normalized'] = df['gyro_x'].apply(normalize_angle)
 df['gyro_y_normalized'] = df['gyro_y'].apply(normalize_angle)
 df['gyro_z_normalized'] = df['gyro_z'].apply(normalize_angle)
@@ -195,14 +201,14 @@ df['gyro_z_normalized'] = df['gyro_z'].apply(normalize_angle)
 st.caption(f"Last updated: {df['created_at'].max().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # ============================================
-# TILT WARNING BANNER (NEW)
+# TILT WARNING BANNER
 # ============================================
 
 latest = df.iloc[-1]
 
-# Get roll and pitch (orient_y = roll, orient_z = pitch)
-current_roll = latest['orient_z']
-current_pitch = latest['orient_y']
+# CORRECTED: Roll is orient_z, Pitch is orient_y
+current_roll = latest['orient_z']    # FIXED: Roll = Z-axis
+current_pitch = latest['orient_y']   # FIXED: Pitch = Y-axis
 
 roll_warning, pitch_warning = check_tilt_warning(current_roll, current_pitch)
 
@@ -235,14 +241,14 @@ with col1:
     )
 
 with col2:
-    # Heading (X) - no normalization needed
+    # Heading (X-axis)
     st.metric(
         "Heading (X)",
         f"{latest['orient_x']:.1f}°"
     )
 
 with col3:
-    # Roll (Y) with warning indicator (NEW)
+    # Roll (Z-axis) with warning indicator - CORRECTED
     roll_status = "⚠️ " if roll_warning else ""
     st.metric(
         f"{roll_status}Roll (Z)",
@@ -250,7 +256,7 @@ with col3:
     )
 
 with col4:
-    # Pitch (Z) with warning indicator (NEW)
+    # Pitch (Y-axis) with warning indicator - CORRECTED
     pitch_status = "⚠️ " if pitch_warning else ""
     st.metric(
         f"{pitch_status}Pitch (Y)",
@@ -316,24 +322,27 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     st.subheader("Orientation (Euler Angles)")
     
-    # Add warning zones to orientation chart (NEW)
+    # Add warning zones to orientation chart
     fig_orient = go.Figure()
     
-    # Add warning zones
-    fig_orient.add_hrect(y0=45, y1=180, fillcolor="red", opacity=0.1, line_width=0, annotation_text="Danger Zone", annotation_position="top left")
-    fig_orient.add_hrect(y0=-180, y1=-45, fillcolor="red", opacity=0.1, line_width=0, annotation_text="Danger Zone", annotation_position="bottom left")
+    # Add warning zones (±45°)
+    fig_orient.add_hrect(y0=45, y1=180, fillcolor="red", opacity=0.1, line_width=0, 
+                        annotation_text="Danger Zone", annotation_position="top left")
+    fig_orient.add_hrect(y0=-180, y1=-45, fillcolor="red", opacity=0.1, line_width=0, 
+                        annotation_text="Danger Zone", annotation_position="bottom left")
     
+    # CORRECTED: Y = Pitch, Z = Roll
     fig_orient.add_trace(go.Scatter(
         x=df['created_at'], y=df['orient_x'],
         name='X (Heading)', mode='lines', line=dict(color='red', width=2)
     ))
     fig_orient.add_trace(go.Scatter(
         x=df['created_at'], y=df['orient_y'],
-        name='Y (Pitch)', mode='lines', line=dict(color='green', width=2)
+        name='Y (Pitch)', mode='lines', line=dict(color='green', width=2)  # FIXED: Pitch
     ))
     fig_orient.add_trace(go.Scatter(
         x=df['created_at'], y=df['orient_z'],
-        name='Z (Roll)', mode='lines', line=dict(color='blue', width=2)
+        name='Z (Roll)', mode='lines', line=dict(color='blue', width=2)    # FIXED: Roll
     ))
     
     fig_orient.update_layout(
@@ -344,7 +353,7 @@ with tab1:
     )
     st.plotly_chart(fig_orient, use_container_width=True)
     
-    # Warning indicator (NEW)
+    # Warning indicator
     st.markdown("**⚠️ Warning Zones:** Red shaded areas indicate tilt beyond safe limits (±45°)")
 
 # TAB 2: ACCELERATION
@@ -383,7 +392,7 @@ with tab2:
     )
     st.plotly_chart(fig_accel_mag, use_container_width=True)
 
-# TAB 3: GYROSCOPE (CHANGED: Now shows -180 to 180)
+# TAB 3: GYROSCOPE
 with tab3:
     st.subheader("Gyroscope (rad/s) - Normalized Range: -180° to 180°")
     
@@ -406,7 +415,7 @@ with tab3:
         yaxis_title="Angular Velocity (normalized °)",
         hovermode='x unified',
         height=400,
-        yaxis=dict(range=[-180, 180])  # Set fixed range
+        yaxis=dict(range=[-180, 180])
     )
     st.plotly_chart(fig_gyro, use_container_width=True)
     
@@ -442,7 +451,7 @@ with tab4:
 with tab5:
     st.subheader("Raw Data Table")
     
-    # Select columns to display (UPDATED with normalized gyro)
+    # Select columns to display
     display_cols = ['created_at', 'device_id', 'temperature', 
                    'orient_x', 'orient_y', 'orient_z',
                    'accel_x', 'accel_y', 'accel_z',
@@ -494,23 +503,17 @@ with stat_col3:
                df['cal_accel'].mean() + df['cal_mag'].mean()) / 4
     st.write(f"Avg Calibration: {avg_cal:.1f}/3")
     
-    # Tilt warning statistics (NEW)
+    # Tilt warning statistics - CORRECTED
     st.markdown("**Tilt Warnings**")
-    roll_violations = len(df[abs(df['orient_y']) > 45])
-    pitch_violations = len(df[abs(df['orient_z']) > 45])
+    roll_violations = len(df[abs(df['orient_z']) > 45])    # FIXED: Roll is Z
+    pitch_violations = len(df[abs(df['orient_y']) > 45])   # FIXED: Pitch is Y
     st.write(f"Roll warnings: {roll_violations}")
     st.write(f"Pitch warnings: {pitch_violations}")
 
 # ============================================
-# AUTO-REFRESH (CHANGED to 0.5s)
+# AUTO-REFRESH
 # ============================================
 
 if auto_refresh:
     time.sleep(0.5)
-
     st.rerun()
-
-
-
-
-
