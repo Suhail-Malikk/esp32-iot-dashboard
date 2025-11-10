@@ -41,7 +41,7 @@ supabase = init_supabase()
 # DATA FETCHING FUNCTIONS
 # ============================================
 
-#st.cache_data(ttl=0.5)  # Cache for 0.5 seconds (CHANGED)
+st.cache_data(ttl=0)  # Cache for 0.5 seconds (CHANGED)
 def fetch_latest_data(limit=25):
     """Fetch latest sensor data from Supabase"""
     if supabase is None:
@@ -201,8 +201,8 @@ st.caption(f"Last updated: {df['created_at'].max().strftime('%Y-%m-%d %H:%M:%S')
 latest = df.iloc[-1]
 
 # Get roll and pitch (orient_y = roll, orient_z = pitch)
-current_roll = latest['orient_y']
-current_pitch = latest['orient_z']
+current_roll = latest['orient_z']
+current_pitch = latest['orient_y']
 
 roll_warning, pitch_warning = check_tilt_warning(current_roll, current_pitch)
 
@@ -245,7 +245,7 @@ with col3:
     # Roll (Y) with warning indicator (NEW)
     roll_status = "⚠️ " if roll_warning else ""
     st.metric(
-        f"{roll_status}Roll (Y)",
+        f"{roll_status}Roll (Z)",
         f"{current_roll:.1f}°"
     )
 
@@ -253,7 +253,7 @@ with col4:
     # Pitch (Z) with warning indicator (NEW)
     pitch_status = "⚠️ " if pitch_warning else ""
     st.metric(
-        f"{pitch_status}Pitch (Z)",
+        f"{pitch_status}Pitch (Y)",
         f"{current_pitch:.1f}°"
     )
 
@@ -329,11 +329,11 @@ with tab1:
     ))
     fig_orient.add_trace(go.Scatter(
         x=df['created_at'], y=df['orient_y'],
-        name='Y (Roll)', mode='lines', line=dict(color='green', width=2)
+        name='Y (Pitch)', mode='lines', line=dict(color='green', width=2)
     ))
     fig_orient.add_trace(go.Scatter(
         x=df['created_at'], y=df['orient_z'],
-        name='Z (Pitch)', mode='lines', line=dict(color='blue', width=2)
+        name='Z (Roll)', mode='lines', line=dict(color='blue', width=2)
     ))
     
     fig_orient.update_layout(
@@ -509,6 +509,7 @@ if auto_refresh:
     time.sleep(0.5)
 
     st.rerun()
+
 
 
 
