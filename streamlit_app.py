@@ -13,7 +13,7 @@ import time
 # ============================================
 
 st.set_page_config(
-    page_title="ESP32 IoT Dashboard",
+    page_title="MT project",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -509,4 +509,5 @@ if auto_refresh:
     time.sleep(0.5)
 
     st.rerun()
+
 
